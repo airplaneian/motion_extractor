@@ -1,0 +1,21 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+
+# IDE / OS Files
+.vscode/
+.idea/
+.DS_Store
+
+# Motion Extractor Application Outputs
+*.mp4
+
+# Sensitive User Configs
+last_stream.txt
