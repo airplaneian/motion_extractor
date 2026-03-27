@@ -20,8 +20,11 @@ class MotionExtractorApp:
         self.cap = None
         self.running = False
         self.thread = None
+        self.capture_thread = None
         self.recording = False
         self.writer = None
+        self.latest_frame = None
+        self.frame_lock = threading.Lock()
         
         # Delcarations of dynamically bound UI components to please strict type checkers
         self.setup_frame = None
@@ -121,8 +124,12 @@ class MotionExtractorApp:
         # Start GUI updater loop
         self.root.after(30, self.process_gui_queue)
         
-        # Launch dedicated processing thread
+        # Launch dedicated reading thread
         self.running = True
+        self.capture_thread = threading.Thread(target=self.capture_loop, daemon=True)
+        self.capture_thread.start()
+        
+        # Launch dedicated processing thread
         self.thread = threading.Thread(target=self.process_loop, daemon=True)
         self.thread.start()
         
@@ -255,7 +262,7 @@ class MotionExtractorApp:
         else:
             timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
             filename = f"motion_ext_{timestamp}.mp4"
-            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+            fourcc = cv2.VideoWriter_fourcc(*'avc1')
             self.writer = cv2.VideoWriter(filename, fourcc, self.fps, (self.native_w, self.native_h))
             self.recording = True
             self.record_btn.config(text="Stop Recording")
@@ -282,6 +289,20 @@ class MotionExtractorApp:
             
         if self.running:
             self.root.after(30, self.process_gui_queue)
+            
+    def capture_loop(self):
+        """Continuously pulls frames from the camera to avoid buffer overflows."""
+        while self.running:
+            try:
+                ret, frame = self.cap.read()
+                if ret and frame is not None:
+                    with self.frame_lock:
+                        self.latest_frame = frame
+                else:
+                    time.sleep(0.01)
+            except Exception as e:
+                print(f"Capture error: {e}")
+                time.sleep(0.1)
                 
     def process_loop(self):
         """Background thread executing intensive capture, buffering, math, and recording."""
@@ -290,19 +311,17 @@ class MotionExtractorApp:
         
         while self.running:
             try:
-                ret, frame = self.cap.read()
+                start_time = time.perf_counter()
                 
-                # Handling disconnects/drops
-                if not ret or frame is None:
-                    if self.last_known_frame is not None:
-                        frame = self.last_known_frame.copy()
-                        time.sleep(1.0 / self.fps) # Emulate native frame timing
+                with self.frame_lock:
+                    if self.latest_frame is None:
+                        frame = None
                     else:
-                        print("Stream unavailable or disconnected...")
-                        time.sleep(1)
-                        continue
-                else:
-                    self.last_known_frame = frame.copy()
+                        frame = self.latest_frame.copy()
+                
+                if frame is None:
+                    time.sleep(0.01)
+                    continue
                 
                 # The rolling queue must support the maximum possible frame lookup depth
                 # Example: Max classic delay = 5.0 seconds. 
@@ -353,12 +372,9 @@ class MotionExtractorApp:
                     diff_neg = cv2.subtract(gray_delayed, gray_curr)
                     _, mask_neg = cv2.threshold(diff_neg, threshold, 255, cv2.THRESH_BINARY)
                     
-                    # Construct a pure black starting frame of identical dimensions 
-                    processed_frame = np.zeros_like(frame)
-                    
-                    # OpenCV standard processing occurs in BGR layout: index 0 is Blue, 2 is Red
-                    processed_frame[:, :, 0] = mask_neg
-                    processed_frame[:, :, 2] = mask_pos
+                    # OpenCV standard processing occurs in BGR layout: index 0 is Blue, 1 is Green, 2 is Red
+                    mask_green = np.zeros_like(mask_neg)
+                    processed_frame = cv2.merge([mask_neg, mask_green, mask_pos])
                     
                 # Full uncompressed Native scale recording support (ignoring UI resize constraints)
                 if self.recording and self.writer:
@@ -384,6 +400,12 @@ class MotionExtractorApp:
                         pass
                 self.gui_queue.put(img)
                 
+                # Enforce native framerate to avoid runaway processing and duplicate timestamps
+                elapsed = time.perf_counter() - start_time
+                target_frame_time = 1.0 / self.fps
+                if elapsed < target_frame_time:
+                    time.sleep(target_frame_time - elapsed)
+                
             except Exception as e:
                 print(f"Exception in process loop: {e}")
                 time.sleep(0.1)
@@ -391,6 +413,8 @@ class MotionExtractorApp:
     def on_closing(self):
         """Cleanup all resources cleanly upon window exit."""
         self.running = False
+        if self.capture_thread:
+            self.capture_thread.join(timeout=1.0)
         if self.thread:
             self.thread.join(timeout=2.0)
         if self.recording and self.writer:
