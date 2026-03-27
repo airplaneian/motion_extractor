@@ -1,17 +1,21 @@
-# Advanced Motion Extractor Tool
+## Motion Extraction Experiments in Python
+This is a lightweight Python experiment exploring a couple of different ways to visualize motion in live video. It's a fun sandbox built with OpenCV to play around with live RTSP streams, NDI virtual cameras, or just a standard webcam to see what happens when you mess with time delays and frame differencing.
 
-A high-performance, real-time computer vision application written in Python. It is designed to extract movement and analyze motion from live video streams via RTSP, NDI Virtual Cameras, or local webcams, without deadlocking or lagging the user interface.
+## What It Does
+Stream Handling: Accepts integer inputs for local webcams (e.g., 0) or network IP streams (rtsp://...). It automatically caches your last used stream on launch so you don't have to keep pasting it.
 
-## Core Features
-- **Persistent Connection UI**: Connect seamlessly to local cameras (e.g., `0`, `1`) or remote IP streams (e.g., `rtsp://...`). The app automatically remembers your last successfully used stream for quick access.
-- **Multithreaded Architecture**: Video capture, frame buffering, and algorithmic calculations all run on background threads. Output is piped to a robust Tkinter queue for a perfectly fluid GUI.
-- **Dynamic Resolution Handling**: Streams are processed internally at uncompressed full native resolutions (720p, 1080p, 4K), but scaled dynamically so the preview fits comfortably on modern monitor screens.
-- **MP4 Local Recording**: Records the resulting mathematical extraction stream natively without GUI compression constraints. Output runs at native framerate seamlessly.
+Threaded GUI: Video capture and frame buffering run on a background thread to ensure the Tkinter interface doesn't lock up or stutter while you are adjusting settings.
 
-## Available Algorithms
-The engine can be toggled in real-time between processing modes seamlessly:
-1. **Classic Motion Extraction**: Inverts a delayed frame in a rolling temporal buffer and combines it dynamically with the active frame. The sliders enable tuning for both `Delay (sec)` and `Blend %`, pushing out stationary pixels while tracking movement trails.
-2. **Polarity Frame Differencing (Neuromorphic Mimic)**: Ultra-fast grayscale variance tracking using structural matrices. Frame divergence is flagged if it out-paces the user-set `Noise Threshold`. Darkening pixels are painted Pure Blue, whilst brightening pixels fire as Pure Red. Emulates Event-based vision sensor polarity models at fractions of normal loop overhead. 
+Resolution Management: The mathematical processing and video writing occur at the stream's uncompressed native resolution, while the live preview window is dynamically scaled down to fit your monitor.
+
+Recording: Includes a basic cv2.VideoWriter setup to trigger local MP4 saves of the processed feed directly from the UI.
+
+## The Two Modes
+You can toggle between two different visual effects in real-time:
+
+Classic Motion Extraction: This replicates a fascinating visual technique demonstrated by the YouTube channel Posy. The script maintains a rolling buffer of frames, takes a delayed frame, inverts its colors, and blends it with the live feed at 50% opacity. Because the static background pixels are exact opposites, they cancel each other out into a neutral gray. As a result, any object that has moved between the two frames suddenly pops out. Sliders allow you to adjust the time delay to target fast or slow motion.
+
+Polarity Frame Differencing (Event Camera Mimic): A software approximation of how neuromorphic "event cameras" work. It compares the current frame to the previous one to isolate brightness changes. If a pixel gets brighter, it paints it pure Red. If it gets darker, it paints it pure Blue. Everything else stays Black. It's fast, high-contrast, and you can tweak the noise threshold to filter out standard camera grain.
 
 ## Installation
 
