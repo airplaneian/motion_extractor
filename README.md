@@ -13,7 +13,11 @@ Recording: Includes a basic cv2.VideoWriter setup to trigger local MP4 saves of 
 ## The Two Modes
 You can toggle between two different visual effects in real-time:
 
-Classic Motion Extraction: This replicates a fascinating visual technique demonstrated by the YouTube channel Posy. The script maintains a rolling buffer of frames, takes a delayed frame, inverts its colors, and blends it with the live feed at 50% opacity. Because the static background pixels are exact opposites, they cancel each other out into a neutral gray. As a result, any object that has moved between the two frames suddenly pops out. Sliders allow you to adjust the time delay to target fast or slow motion.
+Classic Motion Extraction: This replicates a visual technique demonstrated by the YouTube channel Posy. 
+
+https://www.youtube.com/watch?v=NSS6yAMZF78
+
+The script maintains a rolling buffer of frames, takes a delayed frame, inverts its colors, and blends it with the live feed at 50% opacity. Because the static background pixels are exact opposites, they cancel each other out into a neutral gray. As a result, any object that has moved between the two frames suddenly pops out. Sliders allow you to adjust the time delay to target fast or slow motion.
 
 Polarity Frame Differencing (Event Camera Mimic): A software approximation of how neuromorphic "event cameras" work. It compares the current frame to the previous one to isolate brightness changes. If a pixel gets brighter, it paints it pure Red. If it gets darker, it paints it pure Blue. Everything else stays Black. It's fast, high-contrast, and you can tweak the noise threshold to filter out standard camera grain.
 
