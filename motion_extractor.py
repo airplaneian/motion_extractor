@@ -1,3 +1,12 @@
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "opencv-python",
+#     "pillow",
+#     "numpy",
+# ]
+# ///
+
 import cv2
 import threading
 import time
